@@ -1,0 +1,887 @@
+<!doctype html>
+<!--
+  KI-Coach-Baukasten für Studierende (Lern-, Schreib- und Recherche-Coach)
+
+  Basiert auf: „Lern-Coach Baukasten (Umfassend)“ von Marc Lachmann & André Uthmann,
+  Moderatoren der Bezirksregierung Düsseldorf (Stand: Oktober 2026),
+  lizenziert unter CC BY-NC-SA 3.0 DE – https://creativecommons.org/licenses/by-nc-sa/3.0/de/
+
+  Bearbeitung: Anpassung an Studierende, Erweiterung um Schreib- und Recherche-Coach,
+  Ausgabe für den KI-Chat der JGU (eigenes Modell), neue Gestaltung.
+  Die bearbeitete Fassung steht ebenfalls unter CC BY-NC-SA 3.0 DE.
+
+  Bearbeitung: Paul Baselt, Dezernat Hochschulentwicklung, Johannes Gutenberg-Universität Mainz.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KI-Coach-Baukasten</title>
+<style>
+  :root{
+    --red:#C1002A; --red-dark:#99001F; --red-tint:#FBEAEE;
+    --ink:#2B2B2B; --gray:#3C3C3B; --mid:#6E6E6E; --line:#D9D9D9;
+    --soft:#F3F3F3; --soft2:#E9E9E9; --white:#FFFFFF;
+    --ok:#2E7D4F; --radius:10px;
+    --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--soft);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.5}
+  a{color:var(--red)}
+  button{font:inherit;color:inherit}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+
+  /* Kopf */
+  header.top{background:var(--gray);color:var(--white)}
+  header.top .wrap{display:flex;align-items:center;gap:14px;padding-top:18px;padding-bottom:18px}
+  .logo{width:44px;height:44px;border-radius:8px;background:var(--red);display:grid;place-items:center;font-weight:800;font-size:15px;letter-spacing:.5px;flex:none}
+  .top h1{margin:0;font-size:22px;line-height:1.2}
+  .top p{margin:2px 0 0;font-size:14px;color:#D6D6D6}
+
+  main{padding:24px 0 8px}
+  .panel{background:var(--white);border-radius:var(--radius);padding:28px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin:0 0 6px}
+  h2{font-size:26px;line-height:1.25;margin:0 0 6px;color:var(--gray)}
+  h3{font-size:18px;margin:0 0 4px;color:var(--gray)}
+  .lead{color:var(--mid);margin:0 0 22px}
+  .hidden{display:none !important}
+
+  /* Startseite: Coach-Auswahl */
+  .coach-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .coach-card{all:unset;box-sizing:border-box;cursor:pointer;background:var(--soft);border:2px solid transparent;border-radius:var(--radius);padding:22px;display:flex;flex-direction:column;gap:8px;transition:border-color .15s, transform .15s}
+  .coach-card:hover{border-color:var(--red);transform:translateY(-2px)}
+  .coach-card:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+  .coach-card .ic{font-size:34px;line-height:1}
+  .coach-card h3{font-size:20px}
+  .coach-card p{margin:0;color:var(--mid);font-size:15px}
+  .coach-card ul{margin:6px 0 0;padding-left:18px;font-size:14px;color:var(--ink)}
+  .coach-card .go{margin-top:auto;padding-top:10px;font-weight:700;color:var(--red)}
+  .note{background:var(--red-tint);border-radius:var(--radius);padding:14px 16px;margin-top:20px;font-size:15px}
+  .note strong{color:var(--red-dark)}
+
+  /* Reflexion */
+  .reflect{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:18px 0}
+  .reflect div{background:var(--soft);border-radius:var(--radius);padding:14px 16px}
+  .reflect b{display:block;color:var(--gray)}
+  .reflect span{font-size:14px;color:var(--mid)}
+
+  /* Fortschritt */
+  .stepper{display:flex;gap:6px;margin:0 0 20px;padding:0;list-style:none;overflow-x:auto;scrollbar-width:thin}
+  .stepper li{flex:1 0 auto}
+  .stepper button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;min-width:84px;padding:8px 6px;border-radius:8px;font-size:12px;color:var(--mid);text-align:center}
+  .stepper button .dot{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--soft2);font-size:17px}
+  .stepper button.done .dot{background:var(--gray);color:#fff}
+  .stepper button.current{color:var(--red);font-weight:700}
+  .stepper button.current .dot{background:var(--red);color:#fff}
+  .stepper button:disabled{cursor:default;opacity:.55}
+  .stepper button:focus-visible{outline:3px solid var(--red)}
+  .bar{height:6px;border-radius:3px;background:var(--soft2);margin:-10px 0 22px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--red);transition:width .25s}
+
+  /* Optionen */
+  .options{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .opt{all:unset;box-sizing:border-box;cursor:pointer;background:var(--soft);border:2px solid transparent;border-radius:var(--radius);padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+  .opt:hover{border-color:#BDBDBD}
+  .opt:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+  .opt[aria-pressed="true"]{border-color:var(--red);background:var(--red-tint)}
+  .opt .row{display:flex;gap:10px;align-items:flex-start}
+  .opt .ic{font-size:24px;line-height:1.1}
+  .opt h4{margin:0;font-size:17px;color:var(--gray)}
+  .opt .sub{font-size:14px;color:var(--mid);margin:0}
+  .opt .ex{margin-top:6px;background:var(--white);border-radius:8px;padding:10px 12px;font-size:13.5px}
+  .opt .ex p{margin:0 0 4px}
+  .opt .ex p:last-child{margin:0}
+  .opt .ex b{color:var(--gray)}
+  .opt .ex .c b{color:var(--red)}
+  .custom-fields{grid-column:1/-1;background:var(--soft);border-radius:var(--radius);padding:16px 18px;display:grid;gap:10px}
+  label.f{display:grid;gap:4px;font-weight:600;font-size:14px;color:var(--gray)}
+  input[type=text],textarea{font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%}
+  textarea{min-height:70px;resize:vertical}
+  input:focus,textarea:focus{outline:2px solid var(--red);border-color:var(--red)}
+  .fach{margin:0 0 18px;max-width:520px}
+  .hint{font-size:13px;color:var(--mid);font-weight:400}
+
+  /* Navigation */
+  .nav{display:flex;justify-content:space-between;gap:12px;margin-top:24px;flex-wrap:wrap}
+  .btn{cursor:pointer;border:0;border-radius:8px;padding:11px 20px;font-weight:700;background:var(--red);color:#fff}
+  .btn:hover{background:var(--red-dark)}
+  .btn:disabled{background:#C9C9C9;cursor:not-allowed}
+  .btn.ghost{background:var(--white);color:var(--gray);border:1px solid var(--line)}
+  .btn.ghost:hover{background:var(--soft)}
+  .btn.small{padding:7px 12px;font-size:14px}
+  .btn:focus-visible{outline:3px solid var(--gray);outline-offset:2px}
+  .err{color:var(--red-dark);font-size:14px;margin:10px 0 0;min-height:1.2em}
+
+  /* Ergebnis */
+  .summary{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 20px}
+  .chip{all:unset;cursor:pointer;background:var(--soft);border-radius:999px;padding:5px 12px;font-size:13.5px}
+  .chip:hover,.chip:focus-visible{background:var(--soft2);outline:2px solid var(--line)}
+  .chip b{color:var(--gray)}
+  .tabs{display:flex;gap:4px;border-bottom:2px solid var(--soft2);margin:6px 0 18px;flex-wrap:wrap}
+  .tab{all:unset;cursor:pointer;padding:10px 14px;font-weight:700;color:var(--mid);border-bottom:3px solid transparent;margin-bottom:-2px}
+  .tab[aria-selected="true"]{color:var(--red);border-color:var(--red)}
+  .tab:focus-visible{outline:2px solid var(--red)}
+  .howto{margin:0 0 18px;padding-left:22px}
+  .howto li{margin-bottom:6px}
+  .field{border:1px solid var(--line);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+  .field-head{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--soft);padding:8px 12px}
+  .field-head span{font-weight:700;font-size:14px;color:var(--gray)}
+  .field pre,.field .val{margin:0;padding:12px 14px;white-space:pre-wrap;word-wrap:break-word;font-family:var(--font);font-size:14px;max-height:420px;overflow:auto}
+  .field pre{font-family:ui-monospace,Consolas,"Courier New",monospace;font-size:13px;line-height:1.55}
+  .guard{background:var(--soft);border-radius:var(--radius);padding:14px 18px;margin:0 0 18px;font-size:14.5px}
+  .guard h4{margin:0 0 6px;color:var(--gray)}
+  .guard ul{margin:0;padding-left:20px}
+  .tip{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .tip>div{border-radius:var(--radius);padding:14px 16px;font-size:14.5px}
+  .tip .a{background:var(--soft)}
+  .tip .b{background:var(--red-tint)}
+  .tip h4{margin:0 0 6px;color:var(--gray)}
+  .tip .b h4{color:var(--red-dark)}
+  .tip ul{margin:4px 0 0;padding-left:20px}
+  details.md{margin-top:10px;font-size:14px}
+  details.md summary{cursor:pointer;color:var(--red);font-weight:600}
+  .row-btns{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 4px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--gray);color:#fff;padding:10px 18px;border-radius:8px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+
+  /* Fuß / Lizenz */
+  footer.lic{margin:22px auto 30px;font-size:13px;color:var(--mid)}
+  footer.lic .panel{padding:18px 22px}
+  footer.lic p{margin:0 0 6px}
+  footer.lic b{color:var(--gray)}
+
+  @media (max-width:820px){
+    .coach-grid{grid-template-columns:1fr}
+    .options,.reflect,.tip{grid-template-columns:1fr}
+    .panel{padding:20px 16px}
+    h2{font-size:22px}
+  }
+  @media print{
+    header.top,.nav,.stepper,.bar,.tabs,.btn,.row-btns{display:none !important}
+    body{background:#fff}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="logo" aria-hidden="true">KI</div>
+    <div>
+      <h1>KI-Coach-Baukasten</h1>
+      <p>Baue dir deinen persönlichen KI-Coach fürs Studium – Lernen, Schreiben, Recherchieren</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="app" aria-live="polite"></main>
+
+<footer class="lic wrap">
+  <div class="panel" id="license"></div>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* =====================================================================
+   Bearbeiter:in – hier eintragen (erscheint im Lizenzhinweis)
+   ===================================================================== */
+const ADAPTED_BY = "Paul Baselt, Dezernat Hochschulentwicklung, Johannes Gutenberg-Universität Mainz";
+const ADAPTED_DATE = "Oktober 2026";
+
+/* =====================================================================
+   Inhalte
+   ===================================================================== */
+const LICENSE_URL = "https://creativecommons.org/licenses/by-nc-sa/3.0/de/";
+
+const COACHES = {
+  lern: {
+    label: "Lern-Coach", icon: "📚",
+    teaser: "Versteht mit dir Inhalte, fragt dich ab und hilft beim Lernen für Klausuren.",
+    bullets: ["Erklärt in deinem Tempo", "Fragt dich ab statt vorzusagen", "Hilft, wenn du feststeckst"],
+    reflectTitle: "Denk an eine Lernsituation, die richtig gut war",
+    reflectText: "Vielleicht in einer Übung, einem Tutorium, einer Lerngruppe oder schon in der Schule – eine Situation, in der du etwas wirklich verstanden hast.",
+    reflect: [
+      ["Wie war die Person, die dir geholfen hat?", "Geduldig? Fordernd? Locker? Strukturiert?"],
+      ["Wie hat sie erklärt?", "Mit Fragen? Schritt für Schritt? Mit Beispielen?"],
+      ["Was passierte bei Fehlern?", "Neue Erklärung? Ein Tipp? Noch ein Versuch?"],
+      ["Was hat NICHT geholfen?", "Zu schnell? Zu viel auf einmal? Zu wenig Erklärung?"],
+    ],
+    specific: ["lernziel", "lehrstrategie", "feststecken"],
+    greetQ: "Woran arbeitest du gerade – und was ist dein Ziel?",
+    suggestions: ["Erklär mir ein Thema aus meiner Vorlesung", "Frag mich zu meinem Klausurstoff ab", "Hilf mir, einen Lernplan zu erstellen"],
+    rules: [
+      "Gib mir keine fertigen Lösungen für benotete Aufgaben oder Prüfungsleistungen. Hilf mir, selbst auf die Lösung zu kommen.",
+      "Bei Übungsaufgaben darfst du die Lösung zeigen – aber erst, nachdem ich es selbst versucht habe.",
+      "Wenn du dir bei einer Fachaussage nicht sicher bist, sag das offen und empfiehl mir, sie im Skript oder Lehrbuch zu prüfen.",
+    ],
+  },
+  schreib: {
+    label: "Schreib-Coach", icon: "✍️",
+    teaser: "Begleitet dich von der Fragestellung bis zur Überarbeitung – ohne für dich zu schreiben.",
+    bullets: ["Hilft beim Strukturieren", "Gibt ehrliches Feedback", "Schreibt nicht für dich"],
+    reflectTitle: "Denk an einen Text, auf den du stolz bist",
+    reflectText: "Eine Hausarbeit, ein Essay, ein Bericht – oder ein Text, bei dem du gemerkt hast: Jetzt hab ich's.",
+    reflect: [
+      ["Was hat dir beim Schreiben geholfen?", "Eine Gliederung? Feedback? Ein Gespräch über die Idee?"],
+      ["Wo hakt es bei dir meistens?", "Anfangen? Roter Faden? Formulieren? Kürzen?"],
+      ["Welches Feedback war wirklich nützlich?", "Konkrete Hinweise? Fragen? Beispiele?"],
+      ["Was willst du selbst können?", "Was soll am Ende deine eigene Leistung sein?"],
+    ],
+    specific: ["textsorte", "schreibphase", "eingriff"],
+    greetQ: "An welchem Text arbeitest du gerade – und in welcher Phase steckst du?",
+    suggestions: ["Hilf mir, meine Fragestellung zu schärfen", "Gib mir Feedback zu meiner Gliederung", "Ich komme mit dem Schreiben nicht voran"],
+    rules: [
+      "Schreibe keine Texte oder Textteile, die ich als eigene Prüfungsleistung abgeben könnte – keine ganzen Absätze, Kapitel oder fertigen Gliederungen zum Übernehmen.",
+      "Erfinde keine Zitate, Belege oder Literaturangaben.",
+      "Wenn KI-Unterstützung in eine Prüfungsleistung einfließt, erinnere mich daran, die Regeln meiner Lehrenden zu prüfen und die Nutzung zu kennzeichnen.",
+    ],
+  },
+  recherche: {
+    label: "Recherche-Coach", icon: "🔎",
+    teaser: "Hilft dir, ein Thema einzugrenzen, gezielt zu suchen und Quellen kritisch zu bewerten.",
+    bullets: ["Entwickelt Suchstrategien", "Bewertet Quellen mit dir", "Erfindet keine Literatur"],
+    reflectTitle: "Denk an deine letzte Recherche",
+    reflectText: "Für ein Referat, eine Hausarbeit oder einfach aus Interesse: Wie bist du vorgegangen?",
+    reflect: [
+      ["Wo hast du gesucht?", "Google? UB-Katalog? Fachdatenbanken? Literaturlisten?"],
+      ["Was war schwierig?", "Zu viele Treffer? Zu wenige? Die richtigen Begriffe?"],
+      ["Woran erkennst du eine gute Quelle?", "Autor:in? Verlag? Aktualität? Belege?"],
+      ["Was würdest du gern besser können?", "Eingrenzen? Suchen? Bewerten? Ordnen?"],
+    ],
+    specific: ["recherchephase", "quellen", "erfahrung"],
+    greetQ: "Zu welchem Thema recherchierst du – und was hast du schon gefunden?",
+    suggestions: ["Hilf mir, mein Thema einzugrenzen", "Entwickle mit mir Suchbegriffe für den UB-Katalog", "Wie bewerte ich diese Quelle?"],
+    rules: [
+      "Nenne niemals Literaturangaben (Autor:in, Titel, Jahr, Zeitschrift) als Tatsache, wenn du sie nicht sicher überprüfen kannst. Gib mir stattdessen Suchbegriffe, Suchstrategien, Datenbanken und Bewertungskriterien.",
+      "Wenn du doch konkrete Titel nennst, kennzeichne sie ausdrücklich als ungeprüft und fordere mich auf, sie im Katalog der Universitätsbibliothek oder in einer Fachdatenbank zu prüfen.",
+      "Erkläre Suchschritte so, dass ich sie selbst nachvollziehen und wiederholen kann.",
+    ],
+  },
+};
+
+/* Regeln, die in jedem Prompt stehen */
+const COMMON_RULES = [
+  "Sei ehrlich statt gefällig: Benenne Schwächen und Fehler klar, auch wenn ich nur Bestätigung suche.",
+  "Datenschutz: Wenn ich personenbezogene Daten anderer Menschen (z. B. Namen, Noten, Interview- oder Umfragedaten) oder sensible Daten eingebe, weise mich darauf hin und bitte mich, sie zu anonymisieren.",
+  "Urheberrecht: Wenn ich lizenzierte E-Books, Zeitschriftenartikel oder Materialien von Lehrenden hochladen möchte, erinnere mich daran, dass das meist nicht erlaubt ist – eigene Notizen und Open-Access-Texte sind in Ordnung.",
+  "Bei persönlichen Krisen oder starker Belastung gehst du nicht ins Detail, sondern verweist freundlich auf Beratungsangebote der Universität (z. B. Zentrale Studienberatung oder Psychotherapeutische Beratungsstelle).",
+];
+
+const DIALOG = [
+  "Halte Antworten kurz: meist 2–5 Sätze oder eine kurze Liste.",
+  "Dialog statt Monolog: Stelle nach jedem Schritt eine Rückfrage, statt alles auf einmal zu erklären.",
+  "Stelle immer nur eine Frage auf einmal.",
+  "Längere Erklärungen nur, wenn ich ausdrücklich darum bitte.",
+  "Nutze Markdown (Überschriften, **Fettdruck**, Listen, Tabellen), wenn es die Übersicht verbessert.",
+];
+
+/* Schritte. tpl = Baustein für den Prompt; ex = Beispieldialog */
+const STEPS = {
+  studium: {
+    icon: "🎓", short: "Studium", title: "Dein Studium", q: "In welcher Studienphase bist du – und was studierst du?", fach: true,
+    customLabels: ["Studienphase", "Beschreibung"],
+    options: [
+      { id: "einstieg", icon: "🌱", title: "Studieneinstieg", sub: "1.–2. Semester",
+        ex: ["Was ist eigentlich ein Paradigma?", "Gute Frage – der Begriff begegnet dir oft im ersten Semester. Kennst du ihn aus einem bestimmten Text?"],
+        tpl: "Ich bin im Studieneinstieg (1.–2. Semester). Setze wenig Fachwissen voraus, erkläre Fachbegriffe und wissenschaftliche Arbeitsweisen und verbinde Neues mit Alltags- oder Schulwissen." },
+      { id: "bachelor", icon: "📘", title: "Bachelor, fortgeschritten", sub: "ab dem 3. Semester",
+        ex: ["Wie hängen die beiden Theorien zusammen?", "Lass uns erst die Kernannahmen gegenüberstellen. Welche kennst du schon?"],
+        tpl: "Ich bin im fortgeschrittenen Bachelorstudium. Grundbegriffe meines Fachs kenne ich; vertiefe Zusammenhänge und fördere eigenständiges Argumentieren." },
+      { id: "master", icon: "📕", title: "Master", sub: "vertieftes Fachwissen",
+        ex: ["Ich will die Methode kritisch einordnen.", "Gut. Auf welche Grenzen der Methode willst du dich konzentrieren – Validität, Übertragbarkeit oder Annahmen?"],
+        tpl: "Ich studiere im Master. Setze solides Fachwissen voraus, arbeite auf wissenschaftlichem Niveau und fordere mich zu kritischer Reflexion heraus." },
+      { id: "abschluss", icon: "🎯", title: "Abschlussphase", sub: "Bachelor- oder Masterarbeit",
+        ex: ["Ich stecke mitten in meiner Abschlussarbeit.", "Dann lass uns gezielt arbeiten. Was ist gerade der größte Engpass?"],
+        tpl: "Ich bin in der Abschlussphase und arbeite an meiner Bachelor- oder Masterarbeit. Unterstütze mich zielgerichtet und effizient und behalte die wissenschaftliche Eigenständigkeit im Blick." },
+    ],
+  },
+  persoenlichkeit: {
+    icon: "🎭", short: "Persönlichkeit", title: "Persönlichkeit", q: "Wer soll dein Coach sein?",
+    customLabels: ["Rolle", "Beschreibung"],
+    options: [
+      { id: "tutor", icon: "😊", title: "Geduldige:r Tutor:in", sub: "Ruhig, verlässlich, nimmt sich Zeit",
+        ex: ["Ich verstehe das immer noch nicht…", "Kein Problem, wir gehen es noch einmal anders an. Was ist der letzte Punkt, der für dich klar war?"],
+        tpl: "Du bist ein:e geduldige:r Tutor:in. Du bleibst ruhig und unterstützend, auch wenn etwas mehrfach erklärt werden muss.",
+        greet: "Hallo! Schön, dass du da bist." },
+      { id: "motivator", icon: "🔥", title: "Motivierende:r Coach", sub: "Energie, Zuversicht, Fortschritt sichtbar machen",
+        ex: ["Ich hab's endlich verstanden!", "Stark! 🎉 Genau so geht's. Lass uns direkt den nächsten Schritt angehen."],
+        tpl: "Du bist ein:e motivierende:r Coach. Du machst Fortschritte sichtbar, gibst Zuversicht und hilfst mir, dranzubleiben.",
+        greet: "Hey, schön, dass du da bist! 🚀" },
+      { id: "sparring", icon: "🥊", title: "Kritische:r Sparringspartner:in", sub: "Hinterfragt, widerspricht, fordert heraus",
+        ex: ["Ich finde mein Argument überzeugend.", "Dann halte ich mal dagegen: Was würde jemand mit der Gegenposition antworten?"],
+        tpl: "Du bist ein:e kritische:r Sparringspartner:in. Du hinterfragst meine Annahmen, bringst Gegenargumente und forderst mich respektvoll heraus.",
+        greet: "Hallo. Ich bin hier, um dich herauszufordern – im besten Sinne." },
+      { id: "buddy", icon: "🤝", title: "Lockere:r Kommiliton:in", sub: "Auf Augenhöhe, wie in der Lerngruppe",
+        ex: ["Das Thema ist echt trocken.", "Verstehe ich total 😄 Lass uns ein Beispiel suchen, das dich wirklich interessiert."],
+        tpl: "Du bist wie ein:e engagierte:r Kommiliton:in aus der Lerngruppe: auf Augenhöhe, hilfsbereit und ehrlich.",
+        greet: "Hey! Schön, dass du da bist." },
+    ],
+  },
+  ton: {
+    icon: "🗣️", short: "Ton", title: "Ton & Kommunikation", q: "Wie soll dein Coach mit dir sprechen?",
+    customLabels: ["Kommunikationsstil", "Beschreibung"],
+    options: [
+      { id: "locker", icon: "😎", title: "Locker", sub: "Duzen, Alltagssprache, gern mit Emojis",
+        ex: ["Check ich nicht…", "Alles gut 😄 Ist am Anfang echt tricky – wir machen das zusammen."],
+        tpl: "Sprich mich mit „du“ an und schreibe locker, in Alltagssprache. Emojis sind in Maßen erlaubt." },
+      { id: "freundlich", icon: "☺️", title: "Freundlich-sachlich", sub: "Duzen, klar, ohne Umgangssprache",
+        ex: ["Das verstehe ich nicht ganz.", "Verstehe. Lass uns das gemeinsam anschauen – ich zeige dir, worauf es ankommt."],
+        tpl: "Sprich mich mit „du“ an, freundlich und klar, aber ohne Umgangssprache und ohne Emojis." },
+      { id: "akademisch", icon: "🎓", title: "Akademisch-präzise", sub: "Siezen, Fachsprache, präzise Begriffe",
+        ex: ["Wo liegt der Unterschied?", "Der Unterschied liegt in der Operationalisierung. Wie ist der Begriff in Ihrem Text definiert?"],
+        tpl: "Sprich mich mit „Sie“ an. Formuliere sachlich und präzise, nutze die Fachsprache meines Fachs und definiere Begriffe sauber." },
+    ],
+  },
+  feedback: {
+    icon: "⭐", short: "Feedback", title: "Feedback-Stil", q: "Wie soll dein Coach auf deine Antworten und Texte reagieren?",
+    customLabels: ["Feedback-Ansatz", "Beschreibung"],
+    options: [
+      { id: "growth", icon: "🌱", title: "Lernorientiert", sub: "Fehler als Lernchance",
+        ex: ["Das war falsch, oder?", "Teilweise – und genau daran lernst du gerade am meisten. Was war dein Gedanke dabei?"],
+        tpl: "Behandle Fehler als Lernchance. Zeige, was schon gut ist, und mach den nächsten Lernschritt klar." },
+      { id: "konstruktiv", icon: "📊", title: "Konstruktiv-sachlich", sub: "Klar benennen, was gut ist und was fehlt",
+        ex: ["War das richtig?", "Der erste Teil stimmt. Im zweiten fehlt die Begründung – wie würdest du sie ergänzen?"],
+        tpl: "Gib ehrliches, konkretes Feedback: Was ist gelungen, was fehlt, was sollte ich als Nächstes verbessern? Ohne übertriebenes Lob." },
+      { id: "kritisch", icon: "🧐", title: "Kritisch wie ein Gutachten", sub: "Streng, mit Blick auf wissenschaftliche Standards",
+        ex: ["Wie findest du meinen Abschnitt?", "Drei Punkte: Die These ist unklar, Beleg 2 trägt das Argument nicht, und der Übergang fehlt."],
+        tpl: "Bewerte streng wie in einem Gutachten nach wissenschaftlichen Standards. Nenne die wichtigsten Schwächen zuerst und priorisiere sie." },
+      { id: "challenge", icon: "🎯", title: "Herausfordernd", sub: "Nach Erfolg direkt die nächste Stufe",
+        ex: ["Das war richtig!", "Gut, das sitzt. Jetzt schwieriger: Was ändert sich, wenn die Annahme nicht gilt?"],
+        tpl: "Wenn etwas gut gelingt, erhöhe direkt den Anspruch und stelle mir eine anspruchsvollere Anschlussfrage." },
+    ],
+  },
+
+  /* --- Lern-Coach --- */
+  lernziel: {
+    icon: "🏁", short: "Lernziel", title: "Lernziel", q: "Wobei soll dein Lern-Coach dich unterstützen?",
+    customLabels: ["Lernziel", "Beschreibung"],
+    options: [
+      { id: "klausur", icon: "📝", title: "Klausur vorbereiten", sub: "Stoff wiederholen, üben, abfragen",
+        ex: ["In drei Wochen ist Klausur.", "Dann lass uns zuerst die Themen sammeln und schauen, wo du am unsichersten bist."],
+        tpl: "Mein Ziel ist die Vorbereitung auf eine Klausur. Hilf mir, den Stoff zu strukturieren, Lücken zu finden und mich gezielt abzufragen.",
+        suggest: "Frag mich zu meinem Klausurstoff ab" },
+      { id: "verstehen", icon: "💡", title: "Inhalte verstehen", sub: "Vorlesung, Texte, Konzepte durchdringen",
+        ex: ["Die Vorlesung gestern war mir zu schnell.", "Welcher Begriff oder welche Folie war der Punkt, ab dem es unklar wurde?"],
+        tpl: "Mein Ziel ist, Inhalte aus Vorlesungen und Texten wirklich zu verstehen – nicht nur auswendig zu lernen.",
+        suggest: "Erklär mir einen Begriff aus meiner Vorlesung" },
+      { id: "muendlich", icon: "🎤", title: "Mündliche Prüfung & Referat", sub: "Frei erklären, auf Nachfragen reagieren",
+        ex: ["Ich habe nächste Woche meine mündliche Prüfung.", "Dann spielen wir sie durch: Ich stelle Fragen wie ein Prüfer, du antwortest."],
+        tpl: "Mein Ziel ist eine mündliche Prüfung oder ein Referat. Übe mit mir, Inhalte frei zu erklären, und stelle Nachfragen wie ein:e Prüfer:in.",
+        suggest: "Simuliere meine mündliche Prüfung" },
+      { id: "organisation", icon: "🗓️", title: "Lernen organisieren", sub: "Lernplan, Zeit, Motivation",
+        ex: ["Ich schiebe alles vor mir her.", "Lass uns klein anfangen: Was wäre ein realistischer erster Schritt für heute?"],
+        tpl: "Mein Ziel ist, mein Lernen besser zu organisieren: Lernpläne, Zeitmanagement, Lernstrategien und Motivation.",
+        suggest: "Hilf mir, einen Lernplan zu erstellen" },
+    ],
+  },
+  lehrstrategie: {
+    icon: "🧭", short: "Methode", title: "Lehrstrategie", q: "Wie soll dein Coach dir Dinge beibringen?",
+    customLabels: ["Strategie", "Beschreibung"],
+    options: [
+      { id: "sokratisch", icon: "❓", title: "Sokratisches Fragen", sub: "Durch Fragen selbst draufkommen",
+        ex: ["Warum ist das so?", "Was würde passieren, wenn es nicht so wäre? Welche Folge hätte das?"],
+        tpl: "Führe mich mit gezielten Fragen zum Verständnis, statt Antworten vorwegzunehmen." },
+      { id: "schritte", icon: "🪜", title: "Schritt für Schritt", sub: "Komplexes in kleine Teile zerlegen",
+        ex: ["Ich weiß nicht, wo ich anfangen soll.", "Wir teilen es auf: 1. Begriff klären, 2. Beispiel, 3. Anwendung. Starten wir mit 1?"],
+        tpl: "Zerlege komplexe Inhalte in kleine, klar nummerierte Schritte und prüfe nach jedem Schritt mein Verständnis." },
+      { id: "analogien", icon: "🌉", title: "Beispiele & Analogien", sub: "Abstraktes greifbar machen",
+        ex: ["Was ist Opportunitätskosten?", "Stell dir vor, du gehst ins Kino statt zu jobben – der entgangene Lohn sind deine Opportunitätskosten."],
+        tpl: "Erkläre abstrakte Inhalte mit Beispielen, Analogien und Bezügen zu meinem Fach und Alltag." },
+      { id: "abfragen", icon: "🃏", title: "Abfragen & Wiederholen", sub: "Active Recall, Karteikarten, Quiz",
+        ex: ["Ich will das festigen.", "Dann frage ich dich jetzt ab – eine Frage nach der anderen. Bereit?"],
+        tpl: "Frage mich aktiv ab (Active Recall): eine Frage nach der anderen, mit Feedback nach jeder Antwort. Wiederhole Fragen, die ich falsch beantwortet habe, später noch einmal." },
+    ],
+  },
+  feststecken: {
+    icon: "🧩", short: "Feststecken", title: "Wenn ich feststecke", q: "Wie soll dein Coach helfen, wenn du nicht weiterkommst?",
+    customLabels: ["Hilfe-Strategie", "Beschreibung"],
+    options: [
+      { id: "hinweise", icon: "🪜", title: "Gestufte Hinweise", sub: "Erst kleine Tipps, dann konkreter",
+        ex: ["Ich komme nicht weiter.", "Tipp 1: Schau dir noch einmal die Definition an. Fällt dir etwas auf? Sonst gebe ich dir Tipp 2."],
+        tpl: "Wenn ich feststecke, gib mir gestufte Hinweise: erst einen kleinen Denkanstoß, und nur bei Bedarf konkretere Hilfe." },
+      { id: "einfacher", icon: "⏬", title: "Einfacheres Beispiel", sub: "Erst an etwas Leichterem üben",
+        ex: ["Das ist zu kompliziert!", "Okay, nehmen wir eine einfachere Version derselben Aufgabe. Danach gehen wir zurück."],
+        tpl: "Wenn ich feststecke, gib mir zuerst ein einfacheres Beispiel desselben Prinzips und führe mich dann zur eigentlichen Aufgabe zurück." },
+      { id: "diagnose", icon: "🔍", title: "Fehler eingrenzen", sub: "Gemeinsam finden, wo es hakt",
+        ex: ["Ich verstehe das nicht.", "Lass uns eingrenzen: Ist der erste Schritt klar? Oder hakt es beim zweiten?"],
+        tpl: "Wenn ich feststecke, finde mit mir durch kurze Fragen heraus, an welcher Stelle genau mein Verständnis abbricht." },
+      { id: "perspektive", icon: "🔄", title: "Neue Perspektive", sub: "Das Problem anders betrachten",
+        ex: ["Ich sehe den Zusammenhang nicht.", "Probieren wir es von der anderen Seite: Was wäre das Ergebnis – und wie käme man dahin?"],
+        tpl: "Wenn ich feststecke, betrachte das Problem mit mir aus einem anderen Blickwinkel oder mit einer anderen Darstellung (z. B. Skizze, Tabelle)." },
+    ],
+  },
+
+  /* --- Schreib-Coach --- */
+  textsorte: {
+    icon: "📄", short: "Textsorte", title: "Textsorte", q: "An welcher Art von Text arbeitest du?",
+    customLabels: ["Textsorte", "Beschreibung"],
+    options: [
+      { id: "hausarbeit", icon: "📑", title: "Haus- oder Seminararbeit", sub: "Fragestellung, Forschungsstand, Argumentation",
+        ex: ["Meine Hausarbeit soll 15 Seiten haben.", "Dann klären wir zuerst die Fragestellung – sie trägt die ganze Arbeit."],
+        tpl: "Ich schreibe eine Haus- oder Seminararbeit mit Fragestellung, Forschungsstand und eigener Argumentation." },
+      { id: "essay", icon: "🖋️", title: "Essay oder Reflexion", sub: "Eigene Position, klare These",
+        ex: ["Ich soll Stellung beziehen.", "Wie lautet deine These in einem Satz?"],
+        tpl: "Ich schreibe einen Essay oder eine Reflexion, in der ich eine eigene Position begründet vertrete." },
+      { id: "bericht", icon: "🧪", title: "Protokoll oder Bericht", sub: "Labor-, Praktikums- oder Projektbericht",
+        ex: ["Ich muss mein Laborprotokoll schreiben.", "Gut – gehen wir die Gliederung durch: Ziel, Methode, Ergebnisse, Diskussion."],
+        tpl: "Ich schreibe ein Protokoll oder einen Bericht (z. B. Labor, Praktikum, Projekt) mit fester Struktur und sachlicher Darstellung." },
+      { id: "abschlussarbeit", icon: "🎓", title: "Abschlussarbeit", sub: "Bachelor- oder Masterarbeit",
+        ex: ["Ich plane meine Bachelorarbeit.", "Lass uns mit Thema, Fragestellung und Zeitplan anfangen."],
+        tpl: "Ich schreibe eine Bachelor- oder Masterarbeit – ein umfangreiches Projekt, bei dem Planung, roter Faden und Eigenständigkeit entscheidend sind." },
+    ],
+  },
+  schreibphase: {
+    icon: "🛠️", short: "Phase", title: "Schreibphase", q: "Wobei brauchst du gerade am meisten Unterstützung?",
+    customLabels: ["Phase", "Beschreibung"],
+    options: [
+      { id: "frage", icon: "❓", title: "Thema & Fragestellung", sub: "Eingrenzen, präzisieren",
+        ex: ["Mein Thema ist Klimapolitik.", "Das ist noch sehr breit. Welcher Aspekt interessiert dich am meisten – und warum?"],
+        tpl: "Hilf mir vor allem, mein Thema einzugrenzen und eine präzise, bearbeitbare Fragestellung zu entwickeln.",
+        suggest: "Hilf mir, meine Fragestellung zu schärfen" },
+      { id: "gliederung", icon: "🗂️", title: "Gliederung & Argumentation", sub: "Roter Faden, Aufbau",
+        ex: ["Hier ist meine Gliederung.", "Passt jedes Kapitel zur Fragestellung? Bei Kapitel 3 sehe ich den Bezug noch nicht."],
+        tpl: "Hilf mir vor allem, meine Gliederung und Argumentation zu prüfen: Roter Faden, Logik, Bezug zur Fragestellung.",
+        suggest: "Gib mir Feedback zu meiner Gliederung" },
+      { id: "schreiben", icon: "🚧", title: "Ins Schreiben kommen", sub: "Schreibblockade, Rohfassung",
+        ex: ["Ich starre seit einer Stunde auf ein leeres Dokument.", "Erzähl mir in drei Sätzen, was in dem Abschnitt stehen soll – einfach so, wie du es sagen würdest."],
+        tpl: "Hilf mir vor allem, ins Schreiben zu kommen: Schreibblockaden lösen, mit Fragen und Schreibimpulsen zu einer eigenen Rohfassung.",
+        suggest: "Ich komme mit dem Schreiben nicht voran" },
+      { id: "ueberarbeiten", icon: "🔁", title: "Überarbeiten", sub: "Verständlichkeit, Stil, wissenschaftlicher Ausdruck",
+        ex: ["Kannst du meinen Absatz anschauen?", "Der Absatz hat zwei Hauptgedanken. Welcher ist dir wichtiger?"],
+        tpl: "Hilf mir vor allem beim Überarbeiten meiner eigenen Texte: Verständlichkeit, Struktur, wissenschaftlicher Stil.",
+        suggest: "Gib mir Feedback zu einem Absatz" },
+    ],
+  },
+  eingriff: {
+    icon: "🚦", short: "Eingriff", title: "Wie weit darf der Coach eingreifen?", q: "Das ist wichtig für deine Eigenleistung. Im Zweifel: Klär mit deinen Lehrenden, was erlaubt ist.",
+    customLabels: ["Regel", "Beschreibung"],
+    options: [
+      { id: "fragen", icon: "🟢", title: "Nur Fragen & Feedback", sub: "Der Coach formuliert nichts für dich",
+        ex: ["Formulier mir das mal schöner.", "Das mache ich nicht – aber: Was ist die Kernaussage? Sag sie mir in einfachen Worten, dann schärfen wir sie."],
+        tpl: "Gib mir ausschließlich Fragen, Hinweise und Feedback. Formuliere keine Sätze oder Absätze für meinen Text um oder neu." },
+      { id: "beispiele", icon: "🟡", title: "Feedback mit Beispielen", sub: "Beispiele an anderen Texten, nicht an deinem",
+        ex: ["Wie formuliert man eine gute These?", "Hier ist ein Beispiel zu einem anderen Thema: … Wie könnte deine These analog aussehen?"],
+        tpl: "Gib mir Feedback und zeige Prinzipien an selbst erfundenen Beispielen zu einem anderen Thema. Formuliere aber keine Teile meines eigenen Textes um." },
+      { id: "vorschlaege", icon: "🟠", title: "Einzelne Formulierungsvorschläge", sub: "Für einzelne Sätze – Kennzeichnung beachten",
+        ex: ["Der Satz klingt holprig.", "Zwei Möglichkeiten: … oder … Welche passt besser zu deinem Stil? Denk an die Kennzeichnung."],
+        tpl: "Du darfst für einzelne Sätze alternative Formulierungen vorschlagen – immer mehrere Varianten zur Auswahl und nie für ganze Absätze. Erinnere mich dabei, KI-Unterstützung gemäß den Vorgaben meiner Lehrenden zu kennzeichnen." },
+    ],
+  },
+
+  /* --- Recherche-Coach --- */
+  recherchephase: {
+    icon: "🧭", short: "Schritt", title: "Rechercheschritt", q: "Wobei soll dein Recherche-Coach dich vor allem unterstützen?",
+    customLabels: ["Schritt", "Beschreibung"],
+    options: [
+      { id: "eingrenzen", icon: "🎯", title: "Thema eingrenzen", sub: "Vom breiten Thema zur Suchfrage",
+        ex: ["Ich soll was zu Social Media schreiben.", "Was genau: Wirkung, Nutzung, Regulierung? Und für welche Gruppe?"],
+        tpl: "Hilf mir vor allem, mein Thema einzugrenzen und daraus eine recherchierbare Suchfrage abzuleiten.",
+        suggest: "Hilf mir, mein Thema einzugrenzen" },
+      { id: "suchen", icon: "🔤", title: "Suchbegriffe & Suchstrategie", sub: "Synonyme, englische Begriffe, UND/ODER",
+        ex: ["Ich finde nichts.", "Lass uns Synonyme und englische Begriffe sammeln und mit UND/ODER kombinieren."],
+        tpl: "Hilf mir vor allem, Suchbegriffe (inkl. Synonyme und englische Begriffe) zu sammeln und mit Booleschen Operatoren, Trunkierung und Filtern zu einer Suchstrategie zu kombinieren.",
+        suggest: "Entwickle mit mir Suchbegriffe für den UB-Katalog" },
+      { id: "bewerten", icon: "⚖️", title: "Quellen bewerten", sub: "Ist die Quelle zitierfähig und passend?",
+        ex: ["Kann ich diese Quelle verwenden?", "Prüfen wir gemeinsam: Wer hat sie verfasst, wo ist sie erschienen und wie ist sie belegt?"],
+        tpl: "Hilf mir vor allem, Quellen kritisch zu bewerten: Autor:in, Erscheinungsort, Aktualität, Belege, Zweck und Zitierfähigkeit.",
+        suggest: "Wie bewerte ich diese Quelle?" },
+      { id: "ordnen", icon: "🗃️", title: "Lesen & Ordnen", sub: "Texte erschließen, Literatur verwalten",
+        ex: ["Ich habe 30 PDFs und keinen Überblick.", "Lass uns ein Ordnungsschema entwickeln – nach Fragestellung, nicht nach Fundort."],
+        tpl: "Hilf mir vor allem, gefundene Literatur effizient zu lesen, zu exzerpieren und zu ordnen (z. B. mit einem Literaturverwaltungsprogramm).",
+        suggest: "Hilf mir, meine Literatur zu ordnen" },
+    ],
+  },
+  quellen: {
+    icon: "📚", short: "Quellen", title: "Welche Quellen brauchst du?", q: "Welche Art von Quellen ist in deinem Fach wichtig?",
+    customLabels: ["Quellenart", "Beschreibung"],
+    options: [
+      { id: "fachliteratur", icon: "📖", title: "Fachliteratur", sub: "Monografien, Sammelbände, Aufsätze",
+        ex: ["Ich brauche Grundlagenliteratur.", "Ein guter Start sind Handbücher und Einführungen deines Fachs – und deren Literaturverzeichnisse."],
+        tpl: "Ich suche vor allem Fachliteratur (Monografien, Sammelbände, Zeitschriftenaufsätze)." },
+      { id: "empirie", icon: "📈", title: "Empirische Studien", sub: "Daten, Methoden, Peer Review",
+        ex: ["Gibt es Studien dazu?", "Dafür eignen sich Fachdatenbanken. Wichtig: Achte auf Methode, Stichprobe und Peer Review."],
+        tpl: "Ich suche vor allem empirische Studien und achte auf Methode, Stichprobe und Begutachtung (Peer Review)." },
+      { id: "primaer", icon: "🏛️", title: "Primärquellen", sub: "Gesetze, Urteile, historische Quellen, Werke",
+        ex: ["Ich brauche das Originalurteil.", "Dann suchen wir in einer juristischen Datenbank – nicht in Zusammenfassungen."],
+        tpl: "Ich arbeite vor allem mit Primärquellen (z. B. Gesetze, Urteile, historische Dokumente, literarische Werke) und brauche Hilfe, sie zu finden und einzuordnen." },
+      { id: "grau", icon: "🗞️", title: "Statistiken & graue Literatur", sub: "Berichte, amtliche Daten, Positionspapiere",
+        ex: ["Ich brauche aktuelle Zahlen.", "Amtliche Statistiken sind dafür die beste Anlaufstelle. Achte auf Stand und Definitionen."],
+        tpl: "Ich suche vor allem Statistiken und graue Literatur (z. B. amtliche Daten, Berichte von Institutionen) und muss deren Herkunft und Interessen kritisch einordnen." },
+    ],
+  },
+  erfahrung: {
+    icon: "🧗", short: "Erfahrung", title: "Deine Rechercheerfahrung", q: "Wie vertraut bist du mit wissenschaftlicher Recherche?",
+    customLabels: ["Erfahrung", "Beschreibung"],
+    options: [
+      { id: "neu", icon: "🌱", title: "Neu dabei", sub: "Bisher vor allem Google",
+        ex: ["Wie benutze ich den Bibliothekskatalog?", "Ich erkläre es dir Schritt für Schritt – probier jede Suche direkt selbst aus."],
+        tpl: "Ich bin neu in der wissenschaftlichen Recherche. Erkläre Grundlagen wie Bibliothekskatalog, Fernleihe und den Unterschied zwischen Suchmaschine und Datenbank." },
+      { id: "grundlagen", icon: "🔧", title: "Grundlagen sitzen", sub: "Katalog ja, Datenbanken kaum",
+        ex: ["Den Katalog kenne ich.", "Dann ist der nächste Schritt die Fachdatenbank. Welche wird in deinem Fach empfohlen?"],
+        tpl: "Den Bibliothekskatalog kenne ich. Hilf mir, Fachdatenbanken, Boolesche Operatoren und Filter gezielter einzusetzen." },
+      { id: "fortgeschritten", icon: "🧠", title: "Fortgeschritten", sub: "Systematisch und dokumentiert",
+        ex: ["Ich will systematisch suchen.", "Dann dokumentieren wir Suchstring, Datenbank, Datum und Trefferzahl für jede Suche."],
+        tpl: "Ich recherchiere fortgeschritten. Unterstütze mich bei systematischen, dokumentierten Suchen (Suchstrings, Ein- und Ausschlusskriterien, Dokumentation)." },
+    ],
+  },
+};
+
+/* =====================================================================
+   Zustand
+   ===================================================================== */
+const state = { view: "home", coach: null, step: 0, sel: {}, custom: {}, fach: "", name: "", tab: "kichat", maxStep: 0 };
+const app = document.getElementById("app");
+
+function stepsFor(c){ const s = COACHES[c].specific; return ["studium", "persoenlichkeit", "ton", ...s, "feedback"]; }
+
+/* Kleine DOM-Helfer */
+function h(tag, attrs, ...kids){
+  const el = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)){
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "text") el.textContent = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()){ if (kid == null || kid === false) continue; el.append(kid.nodeType ? kid : document.createTextNode(kid)); }
+  return el;
+}
+function toast(msg){ const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1800); }
+function focusTop(){ const t = app.querySelector("h2"); if (t){ t.setAttribute("tabindex", "-1"); t.focus({ preventScroll: true }); } window.scrollTo({ top: 0, behavior: "smooth" }); }
+
+/* Kopieren mit Ersatzweg (z. B. wenn Moodle die Seite im iframe zeigt) */
+async function copyText(text){
+  try { await navigator.clipboard.writeText(text); toast("✓ In die Zwischenablage kopiert"); return; } catch(e){}
+  const ta = h("textarea", { "aria-hidden": "true", style: "position:fixed;top:-1000px;opacity:0" }); ta.value = text; document.body.append(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch(e){}
+  ta.remove();
+  toast(ok ? "✓ In die Zwischenablage kopiert" : "Kopieren nicht möglich – bitte Text markieren und mit Strg+C kopieren");
+}
+function download(filename, text){
+  try {
+    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+    const a = h("a", { href: URL.createObjectURL(blob), download: filename }); document.body.append(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  } catch(e){ toast("Download nicht möglich – bitte stattdessen kopieren"); }
+}
+
+/* =====================================================================
+   Ansichten
+   ===================================================================== */
+function render(){
+  app.innerHTML = "";
+  if (state.view === "home") renderHome();
+  else if (state.view === "intro") renderIntro();
+  else if (state.view === "wizard") renderWizard();
+  else renderResult();
+}
+
+function renderHome(){
+  const grid = h("div", { class: "coach-grid" });
+  for (const [id, c] of Object.entries(COACHES)){
+    grid.append(h("button", { class: "coach-card", type: "button", onclick: () => { start(id); } },
+      h("span", { class: "ic", "aria-hidden": "true" }, c.icon),
+      h("h3", null, c.label),
+      h("p", null, c.teaser),
+      h("ul", null, c.bullets.map(b => h("li", null, b))),
+      h("span", { class: "go" }, "Coach bauen →")));
+  }
+  app.append(h("section", { class: "panel" },
+    h("p", { class: "eyebrow" }, "KI im Studium"),
+    h("h2", null, "Welchen Coach möchtest du bauen?"),
+    h("p", { class: "lead" }, "In 7 kurzen Schritten stellst du dir einen KI-Coach zusammen, der zu dir und deinem Studium passt. Am Ende bekommst du einen fertigen Prompt – zum Beispiel für ein eigenes Modell im KI-Chat der JGU."),
+    grid,
+    h("div", { class: "note" },
+      h("strong", null, "Gut zu wissen: "),
+      "Jeder Coach hat feste Leitplanken eingebaut – er erfindet keine Quellen, schreibt keine Prüfungsleistungen für dich und erinnert dich an Datenschutz und Urheberrecht. Ob und wie du KI in Prüfungen nutzen darfst, entscheiden deine Lehrenden.")));
+}
+
+function start(id){
+  state.coach = id; state.step = 0; state.maxStep = 0; state.sel = {}; state.custom = {}; state.name = "";
+  state.view = "intro"; render(); focusTop();
+}
+
+function renderIntro(){
+  const c = COACHES[state.coach];
+  app.append(h("section", { class: "panel" },
+    h("p", { class: "eyebrow" }, c.label + " · Bevor wir starten"),
+    h("h2", null, "🤔 " + c.reflectTitle),
+    h("p", { class: "lead" }, c.reflectText + " Nimm dir einen Moment und denk über diese Fragen nach:"),
+    h("div", { class: "reflect" }, c.reflect.map(([b, s]) => h("div", null, h("b", null, b), h("span", null, s)))),
+    h("p", null, "Diese Gedanken helfen dir, deinen Coach so zu gestalten, dass er wirklich zu dir passt."),
+    h("div", { class: "nav" },
+      h("button", { class: "btn ghost", type: "button", onclick: () => { state.view = "home"; render(); focusTop(); } }, "← Anderer Coach"),
+      h("button", { class: "btn", type: "button", onclick: () => { state.view = "wizard"; render(); focusTop(); } }, "Los geht's →"))));
+}
+
+function stepValid(id){
+  const sel = state.sel[id];
+  if (!sel) return false;
+  if (sel === "custom"){ const cu = state.custom[id] || {}; if (!(cu.title || "").trim() || !(cu.desc || "").trim()) return false; }
+  if (STEPS[id].fach && !state.fach.trim()) return false;
+  return true;
+}
+
+function renderWizard(){
+  const c = COACHES[state.coach], ids = stepsFor(state.coach), id = ids[state.step], st = STEPS[id];
+  const panel = h("section", { class: "panel" });
+
+  // Fortschritt
+  const ol = h("ol", { class: "stepper", "aria-label": "Fortschritt" });
+  ids.forEach((sid, i) => {
+    const done = stepValid(sid) && i !== state.step;
+    ol.append(h("li", null, h("button", { type: "button", class: (i === state.step ? "current " : "") + (done ? "done" : ""), disabled: i > state.maxStep,
+      "aria-current": i === state.step ? "step" : null, onclick: () => { state.step = i; render(); focusTop(); } },
+      h("span", { class: "dot", "aria-hidden": "true" }, STEPS[sid].icon), STEPS[sid].short)));
+  });
+  panel.append(ol, h("div", { class: "bar", "aria-hidden": "true" }, h("i", { style: `width:${((state.step + 1) / ids.length) * 100}%` })));
+
+  panel.append(h("p", { class: "eyebrow" }, `${c.label} · Schritt ${state.step + 1} von ${ids.length}`), h("h2", null, `${st.icon} ${st.title}`), h("p", { class: "lead" }, st.q));
+
+  if (st.fach){
+    const inp = h("input", { type: "text", id: "fach", placeholder: "z. B. Politikwissenschaft, Chemie, Lehramt Deutsch/Geschichte", autocomplete: "off" });
+    inp.value = state.fach;
+    inp.addEventListener("input", () => { state.fach = inp.value; updateNext(); });
+    panel.append(h("label", { class: "f fach", for: "fach" }, "Dein Studienfach", inp));
+  }
+
+  const grid = h("div", { class: "options", role: "group", "aria-label": st.title });
+  const all = [...st.options, { id: "custom", icon: "✏️", title: "Eigene Option", sub: "Beschreibe selbst, was du dir wünschst" }];
+  all.forEach(o => {
+    const pressed = state.sel[id] === o.id;
+    const card = h("button", { class: "opt", type: "button", "aria-pressed": pressed ? "true" : "false", onclick: () => { state.sel[id] = o.id; render(); const again = app.querySelector(`[data-opt="${o.id}"]`); if (again) again.focus(); }, "data-opt": o.id },
+      h("div", { class: "row" }, h("span", { class: "ic", "aria-hidden": "true" }, o.icon), h("div", null, h("h4", null, o.title), h("p", { class: "sub" }, o.sub))),
+      o.ex ? h("div", { class: "ex" }, h("p", null, h("b", null, "Du: "), "„" + o.ex[0] + "“"), h("p", { class: "c" }, h("b", null, "Coach: "), "„" + o.ex[1] + "“")) : null);
+    grid.append(card);
+  });
+  if (state.sel[id] === "custom"){
+    const cu = state.custom[id] = state.custom[id] || { title: "", desc: "" };
+    const t = h("input", { type: "text", id: "cu-t" }); t.value = cu.title; t.addEventListener("input", () => { cu.title = t.value; updateNext(); });
+    const d = h("textarea", { id: "cu-d", placeholder: "Beschreibe in 1–3 Sätzen, wie sich dein Coach verhalten soll." }); d.value = cu.desc; d.addEventListener("input", () => { cu.desc = d.value; updateNext(); });
+    grid.append(h("div", { class: "custom-fields" },
+      h("label", { class: "f", for: "cu-t" }, st.customLabels[0], t),
+      h("label", { class: "f", for: "cu-d" }, st.customLabels[1], h("span", { class: "hint" }, "Wird so in den Prompt übernommen – schreib es als Anweisung an den Coach."), d)));
+  }
+  panel.append(grid);
+
+  const err = h("p", { class: "err", id: "err" });
+  const next = h("button", { class: "btn", type: "button", id: "next", onclick: () => {
+    if (!stepValid(id)){ err.textContent = !state.sel[id] ? "Bitte wähle eine Option." : (st.fach && !state.fach.trim()) ? "Bitte gib dein Studienfach an." : "Bitte fülle beide Felder der eigenen Option aus."; return; }
+    if (state.step < ids.length - 1){ state.step++; state.maxStep = Math.max(state.maxStep, state.step); render(); focusTop(); }
+    else { state.view = "result"; state.maxStep = ids.length - 1; if (!state.name) state.name = defaultName(); render(); focusTop(); }
+  } }, state.step < ids.length - 1 ? "Weiter →" : "✨ Coach erstellen");
+  panel.append(err, h("div", { class: "nav" },
+    h("button", { class: "btn ghost", type: "button", onclick: () => { if (state.step === 0){ state.view = "intro"; } else state.step--; render(); focusTop(); } }, "← Zurück"),
+    next));
+  app.append(panel);
+  updateNext();
+}
+function updateNext(){
+  const ids = stepsFor(state.coach), id = ids[state.step], n = document.getElementById("next"), e = document.getElementById("err");
+  if (n) n.disabled = !stepValid(id);
+  if (e && stepValid(id)) e.textContent = "";
+}
+
+/* =====================================================================
+   Prompt bauen
+   ===================================================================== */
+function opt(id){
+  const sel = state.sel[id];
+  if (sel === "custom"){ const cu = state.custom[id]; return { title: cu.title.trim(), tpl: cu.desc.trim(), custom: true }; }
+  return STEPS[id].options.find(o => o.id === sel);
+}
+function defaultName(){ return "Mein " + COACHES[state.coach].label; }
+function coachName(){ return (state.name || "").trim() || defaultName(); }
+
+function greeting(){
+  const p = opt("persoenlichkeit"), c = COACHES[state.coach];
+  const hi = (p && p.greet) || "Hallo! Schön, dass du da bist.";
+  let q = c.greetQ;
+  const ton = state.sel.ton;
+  if (ton === "akademisch") q = q.replace(/arbeitest du/g, "arbeiten Sie").replace(/steckst du/g, "stecken Sie").replace(/recherchierst du/g, "recherchieren Sie").replace(/hast du/g, "haben Sie").replace(/ist dein Ziel/g, "ist Ihr Ziel");
+  const hi2 = ton === "akademisch" ? hi.replace("dass du da bist", "dass Sie da sind").replace("dich herauszufordern", "Sie herauszufordern") : hi;
+  return `${hi2} ${q}`;
+}
+
+function sections(){
+  const c = COACHES[state.coach], ids = stepsFor(state.coach);
+  const stud = opt("studium");
+  const out = [];
+  out.push(["ZIELGRUPPE", `Ich studiere ${state.fach.trim()}. ${stud.tpl}`]);
+  out.push(["ROLLE UND PERSÖNLICHKEIT", opt("persoenlichkeit").tpl]);
+  out.push(["KOMMUNIKATIONSSTIL", opt("ton").tpl]);
+  c.specific.forEach(sid => out.push([STEPS[sid].title.toUpperCase(), opt(sid).tpl]));
+  out.push(["FEEDBACK", opt("feedback").tpl]);
+  return out;
+}
+
+function systemPrompt(){
+  const c = COACHES[state.coach];
+  const parts = [`Du bist „${coachName()}“, ein KI-${c.label} für Studierende.`, ""];
+  for (const [t, body] of sections()){ parts.push(`# ${t}`, body, ""); }
+  parts.push("# DIALOG-PRINZIP", ...DIALOG.map(d => "- " + d), "");
+  parts.push("# LEITPLANKEN (gelten immer)", ...c.rules.map(r => "- " + r), ...COMMON_RULES.map(r => "- " + r), "");
+  parts.push("# GESPRÄCHSSTART", `Antworte auf meine erste Nachricht, indem du dich kurz vorstellst und fragst: „${greeting()}“ – außer meine erste Nachricht enthält bereits eine konkrete Frage; dann geh direkt darauf ein.`);
+  return parts.join("\n");
+}
+function universalPrompt(){
+  return systemPrompt() + "\n\n---\n\nBestätige kurz, dass du die Rolle übernimmst, und beginne dann mit: „" + greeting() + "“";
+}
+function description(){
+  const c = COACHES[state.coach];
+  return `${c.label} für ${state.fach.trim()} (${opt("studium").title}) – ${opt("persoenlichkeit").title}, ${opt(c.specific[0]).title}.`;
+}
+function suggestions(){
+  const c = COACHES[state.coach], list = [];
+  for (const sid of c.specific){ const o = opt(sid); if (o && o.suggest) list.push(o.suggest); }
+  for (const s of c.suggestions) if (!list.includes(s)) list.push(s);
+  return list.slice(0, 3);
+}
+function today(){ return new Date().toLocaleDateString("de-DE"); }
+function nachweis(){
+  const c = COACHES[state.coach];
+  return `KI-Nutzungsnachweis
+
+Für [Titel der Arbeit / Prüfungsleistung] habe ich am [Datum, z. B. ${today()}] einen selbst konfigurierten KI-${c.label} („${coachName()}“) im KI-Chat der JGU (ki-chat.uni-mainz.de, Basismodell: [Modellname]) genutzt.
+
+Zweck: [z. B. Feedback zur Gliederung / Abfragen des Klausurstoffs / Entwicklung von Suchbegriffen]
+Betroffene Teile der Arbeit: [Kapitel/Abschnitte oder „keine direkten Übernahmen“]
+Eigene Leistung: [Was habe ich selbst erarbeitet, geprüft oder verändert?]
+
+Der verwendete Systemprompt und die Chatverläufe sind im Anhang dokumentiert.`;
+}
+function markdown(){
+  const c = COACHES[state.coach];
+  return `# ${coachName()} – KI-${c.label}
+
+> Erstellt mit dem KI-Coach-Baukasten am ${today()}.
+> Basiert auf dem „Lern-Coach Baukasten“ von Marc Lachmann & André Uthmann (Bezirksregierung Düsseldorf), CC BY-NC-SA 3.0 DE; bearbeitet von ${ADAPTED_BY}.
+
+## Beschreibung
+${description()}
+
+## Systemprompt
+\`\`\`
+${systemPrompt()}
+\`\`\`
+
+## Prompt-Vorschläge
+${suggestions().map(s => "- " + s).join("\n")}
+
+## So richtest du den Coach im KI-Chat der JGU ein
+1. ki-chat.uni-mainz.de öffnen und mit dem JGU-Account anmelden.
+2. Im Arbeitsbereich ein neues Modell anlegen (eigenes Modell individualisieren).
+3. Name, Basismodell und Beschreibung eintragen, den Systemprompt einfügen.
+4. Optional: die Prompt-Vorschläge hinterlegen. Speichern – fertig.
+
+## Vorlage: KI-Nutzungsnachweis
+${nachweis()}
+`;
+}
+
+/* =====================================================================
+   Ergebnis
+   ===================================================================== */
+function field(label, value, mono){
+  return h("div", { class: "field" },
+    h("div", { class: "field-head" }, h("span", null, label), h("button", { class: "btn small ghost", type: "button", onclick: () => copyText(value) }, "📋 Kopieren")),
+    h(mono ? "pre" : "div", { class: mono ? "" : "val", text: value }));
+}
+
+function renderResult(){
+  const c = COACHES[state.coach], ids = stepsFor(state.coach);
+  const panel = h("section", { class: "panel" });
+  panel.append(h("p", { class: "eyebrow" }, c.label + " · Fertig"), h("h2", null, "✨ Dein " + c.label + " ist bereit"),
+    h("p", { class: "lead" }, "Gib deinem Coach einen Namen und übertrage ihn in den KI-Chat der JGU. Mit einem Klick auf eine Auswahl unten kannst du sie noch ändern."));
+
+  const nameIn = h("input", { type: "text", id: "cname" }); nameIn.value = state.name;
+  nameIn.addEventListener("change", () => { state.name = nameIn.value; render(); document.getElementById("cname").focus(); });
+  panel.append(h("label", { class: "f fach", for: "cname" }, "Name deines Coaches", h("span", { class: "hint" }, "Änderung wird übernommen, wenn du das Feld verlässt."), nameIn));
+
+  panel.append(h("div", { class: "summary" }, ids.map((sid, i) => {
+    const o = opt(sid);
+    return h("button", { class: "chip", type: "button", title: "Ändern", onclick: () => { state.view = "wizard"; state.step = i; render(); focusTop(); } },
+      h("b", null, STEPS[sid].short + ": "), sid === "studium" ? `${state.fach.trim()}, ${o.title}` : o.title);
+  })));
+
+  panel.append(h("div", { class: "guard" }, h("h4", null, "🦺 Diese Leitplanken sind immer eingebaut"),
+    h("ul", null, [...c.rules.slice(0, 1), "Ehrliches Feedback statt Gefälligkeit", "Hinweise zu Datenschutz und Urheberrecht", "Verweis auf Beratungsangebote der Uni bei persönlichen Krisen"].map(r => h("li", null, r)))));
+
+  const tabs = [["kichat", "🎓 KI-Chat der JGU"], ["other", "🤖 Andere KI-Tools"], ["nachweis", "🏷️ Nutzung kennzeichnen"]];
+  const tl = h("div", { class: "tabs", role: "tablist" });
+  tabs.forEach(([tid, lab]) => tl.append(h("button", { class: "tab", role: "tab", type: "button", id: "tab-" + tid, "aria-selected": state.tab === tid ? "true" : "false", "aria-controls": "pane", onclick: () => { state.tab = tid; render(); document.getElementById("tab-" + tid).focus(); } }, lab)));
+  panel.append(tl);
+  const pane = h("div", { id: "pane", role: "tabpanel", "aria-labelledby": "tab-" + state.tab });
+
+  if (state.tab === "kichat"){
+    pane.append(
+      h("ol", { class: "howto" },
+        h("li", null, "Öffne ", h("a", { href: "https://ki-chat.uni-mainz.de", target: "_blank", rel: "noopener" }, "ki-chat.uni-mainz.de"), " und melde dich mit deinem JGU-Account an."),
+        h("li", null, "Lege im ", h("b", null, "Arbeitsbereich"), " unter ", h("b", null, "Modelle"), " ein neues Modell an."),
+        h("li", null, "Trage ", h("b", null, "Name"), " und ", h("b", null, "Beschreibung"), " ein und wähle ein ", h("b", null, "Basismodell"), "."),
+        h("li", null, "Füge den ", h("b", null, "Systemprompt"), " ein. Optional: Prompt-Vorschläge hinterlegen."),
+        h("li", null, "Speichern – dein Coach erscheint jetzt in der Modellauswahl.")),
+      h("p", { class: "hint" }, "Die Bezeichnungen im KI-Chat können je nach Version leicht abweichen."),
+      field("Name", coachName()),
+      field("Beschreibung", description()),
+      field("Systemprompt", systemPrompt(), true),
+      h("div", { class: "field" },
+        h("div", { class: "field-head" }, h("span", null, "Prompt-Vorschläge (optional)")),
+        h("div", { class: "val" }, suggestions().map(s => h("div", { class: "row-btns", style: "align-items:center;justify-content:space-between;flex-wrap:nowrap" }, h("span", { style: "flex:1" }, s), h("button", { class: "btn small ghost", type: "button", onclick: () => copyText(s) }, "📋"))))),
+      h("div", { class: "row-btns" }, h("button", { class: "btn", type: "button", onclick: () => download(fileName(), markdown()) }, "⬇️ Alles als Markdown herunterladen")),
+      mdInfo());
+  } else if (state.tab === "other"){
+    pane.append(
+      h("p", null, "Für Tools ohne eigene Modelle: Starte einen neuen Chat und füge diesen Prompt als erste Nachricht ein. Bei ChatGPT, Claude oder Gemini kannst du ihn auch in einem Projekt oder als eigene Anweisungen hinterlegen."),
+      h("div", { class: "note", style: "margin:0 0 14px" }, h("strong", null, "Datenschutz: "), "Kommerzielle Anbieter speichern Eingaben oft und nutzen sie teils zum Training. Der KI-Chat der JGU läuft auf Servern der Universität."),
+      field("Prompt für die erste Nachricht", universalPrompt(), true),
+      h("div", { class: "row-btns" }, h("button", { class: "btn", type: "button", onclick: () => download(fileName(), markdown()) }, "⬇️ Als Markdown herunterladen")),
+      mdInfo());
+  } else {
+    pane.append(
+      h("p", null, "Wenn dein Coach dich bei einer Prüfungsleistung unterstützt hat, mach das transparent. Kläre vorher mit deinen Lehrenden, ob und wie KI erlaubt ist, und nutze die Eigenständigkeitserklärung der JGU (Fassung mit KI-Nutzung)."),
+      field("Vorlage: KI-Nutzungsnachweis", nachweis()),
+      h("p", { class: "hint" }, "Hinweise zum Zitieren von KI-Tools gibt die Universitätsbibliothek Mainz in ihrer Handreichung „KI zitieren“. Sichere deine Chatverläufe außerhalb des Tools."));
+  }
+  panel.append(pane);
+
+  panel.append(h("div", { class: "tip" },
+    h("div", { class: "a" }, h("h4", null, "📎 Tipp: Eigenes Material mitgeben"),
+      h("p", { style: "margin:0" }, "Du kannst deinem Coach Dateien geben, damit er gezielt auf dein Material eingeht – im KI-Chat direkt im Chat oder als Wissen beim Modell."),
+      h("ul", null, h("li", null, "Eigene Mitschriften, Zusammenfassungen, Lernzettel"), h("li", null, "Eigene Textentwürfe"), h("li", null, "Open-Access-Texte (Lizenz beachten)"))),
+    h("div", { class: "b" }, h("h4", null, "⚠️ Urheberrecht & Datenschutz"),
+      h("ul", null,
+        h("li", null, "Keine lizenzierten E-Books oder Zeitschriftenartikel der UB hochladen – fast alle Verlage verbieten das."),
+        h("li", null, "Keine Skripte oder Folien von Lehrenden ohne deren Erlaubnis."),
+        h("li", null, "Keine personenbezogenen Daten anderer Menschen.")))));
+
+  panel.append(h("div", { class: "nav" },
+    h("button", { class: "btn ghost", type: "button", onclick: () => { state.view = "wizard"; state.step = ids.length - 1; render(); focusTop(); } }, "← Zurück"),
+    h("button", { class: "btn ghost", type: "button", onclick: () => { state.view = "home"; state.tab = "kichat"; render(); focusTop(); } }, "🔁 Weiteren Coach bauen")));
+  app.append(panel);
+}
+function fileName(){ return (coachName().toLowerCase().replace(/[äöüß]/g, m => ({ "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss" }[m])).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ki-coach") + ".md"; }
+function mdInfo(){
+  return h("details", { class: "md" }, h("summary", null, "Was ist eine Markdown-Datei?"),
+    h("p", null, "Markdown ist Text mit einfachen Formatierungszeichen (z. B. **fett**, # Überschrift). Die .md-Datei kannst du mit jedem Texteditor öffnen und den Inhalt in KI-Tools einfügen – sie dient dir auch als Dokumentation deines Coaches."));
+}
+
+/* =====================================================================
+   Lizenz
+   ===================================================================== */
+(function license(){
+  const L = document.getElementById("license");
+  L.append(
+    h("p", null, h("b", null, "Lizenz & Urheber:innen")),
+    h("p", null, "Dieser Baukasten basiert auf dem „Lern-Coach Baukasten“ von ", h("b", null, "Marc Lachmann & André Uthmann"), ", Moderatoren der Bezirksregierung Düsseldorf (Stand: Oktober 2026), lizenziert unter ",
+      h("a", { href: LICENSE_URL, target: "_blank", rel: "license noopener" }, "CC BY-NC-SA 3.0 DE"), " (Namensnennung – nicht kommerziell – Weitergabe unter gleichen Bedingungen)."),
+    h("p", null, "Bearbeitung: Anpassung für Studierende, Erweiterung um Schreib- und Recherche-Coach, Ausgabe für den KI-Chat der JGU, neue Gestaltung – ", ADAPTED_BY, ", ", ADAPTED_DATE, "."),
+    h("p", null, "Die bearbeitete Fassung steht ebenfalls unter ", h("a", { href: LICENSE_URL, target: "_blank", rel: "license noopener" }, "CC BY-NC-SA 3.0 DE"), "."));
+})();
+
+render();
+</script>
+</body>
+</html>
